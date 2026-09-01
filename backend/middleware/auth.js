@@ -1,11 +1,8 @@
 function requireAuth(req, res, next) {
-  if (!req.session || !req.session.userId) {
-    res.status(401).json({ error: 'You are not authorized to access this resource.' });
-    return;
+  if (req.session && req.session.isLoggedIn) {
+    return next();
   }
-  next();
+  return res.status(401).json({ error: 'Unauthorized. Owner login required.' });
 }
 
-module.exports = {
-  requireAuth,
-};
+module.exports = requireAuth;

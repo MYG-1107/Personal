@@ -1,66 +1,109 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Personal File Vault</title>
-    <link rel="stylesheet" href="/style.css" />
-  </head>
-  <body>
-    <header class="container">
-      <h1>Personal File Vault</h1>
-      <p>Store and access your important files.</p>
-      <div class="header-actions">
-        <a class="button" href="/login">Login</a>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal File Vault</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="container header-container">
+      <div>
+        <h1>Personal File Vault</h1>
+        <p class="subtitle">Secure local file storage and sharing</p>
       </div>
-    </header>
+      <div class="auth-status">
+        <span id="userStatus">Checking auth...</span>
+        <button id="authBtn" class="btn btn-secondary">Login</button>
+      </div>
+    </div>
+  </header>
 
-    <main class="container">
-      <section class="card">
-        <h2>Upload Files</h2>
-        <form id="uploadForm">
-          <input id="fileInput" type="file" name="files" multiple />
-          <button type="submit">Upload File(s)</button>
-        </form>
-        <progress id="uploadProgress" value="0" max="100" hidden></progress>
-        <p id="uploadStatus" class="status"></p>
-      </section>
-
-      <section class="card">
-        <h2>Find Files</h2>
-        <div class="row">
-          <input id="searchInput" type="search" placeholder="Search files..." />
+  <main class="container">
+    <!-- Protected Upload Section -->
+    <section class="upload-section" id="uploadSection">
+      <form id="uploadForm">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" multiple hidden>
+          <div class="drop-zone-content">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p>Drag and drop files here or <button type="button" id="browseBtn" class="btn-inline">browse</button></p>
+            <span class="file-hint">Supports Images, PDFs, Documents, Text, ZIPs up to 50MB</span>
+          </div>
         </div>
+        <div id="filePreviewList" class="file-preview-list"></div>
+        <button type="submit" id="uploadSubmitBtn" class="btn btn-primary" disabled>Upload Files</button>
+      </form>
+    </section>
 
-        <div class="filters" id="categoryFilters">
-          <button data-category="all" class="active">All</button>
-          <button data-category="documents">Documents</button>
-          <button data-category="images">Images</button>
-          <button data-category="pdfs">PDFs</button>
-          <button data-category="text">Text</button>
-          <button data-category="others">Other</button>
+    <!-- Toolbar: Search and Filters -->
+    <section class="toolbar-section">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search files by name...">
+      </div>
+      <div class="category-filters" id="categoryFilters">
+        <button class="filter-btn active" data-category="all">All</button>
+        <button class="filter-btn" data-category="documents">Documents</button>
+        <button class="filter-btn" data-category="images">Images</button>
+        <button class="filter-btn" data-category="pdfs">PDFs</button>
+        <button class="filter-btn" data-category="others">Others</button>
+      </div>
+    </section>
+
+    <!-- File Listing Table -->
+    <section class="table-section">
+      <table class="file-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Size</th>
+            <th>Date Added</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="fileTableBody"></tbody>
+      </table>
+      <div id="emptyState" class="empty-state hidden">
+        <p>No files found matching your criteria.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Login Modal -->
+  <div id="loginModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn" id="loginModalClose">&times;</span>
+      <h3>Owner Login</h3>
+      <form id="loginForm" style="margin-top: 1rem;">
+        <div style="margin-bottom: 1rem;">
+          <label style="display:block; margin-bottom: 0.25rem; font-size: 0.85rem;">Username</label>
+          <input type="text" id="loginUsername" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
         </div>
-      </section>
-
-      <section class="card">
-        <h2>Files</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>File Name</th>
-                <th>Type</th>
-                <th>Size</th>
-                <th>Uploaded</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="fileTableBody"></tbody>
-          </table>
+        <div style="margin-bottom: 1rem;">
+          <label style="display:block; margin-bottom: 0.25rem; font-size: 0.85rem;">Password</label>
+          <input type="password" id="loginPassword" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
         </div>
-      </section>
-    </main>
+        <p id="loginError" style="color: red; font-size: 0.85rem; margin-bottom: 0.5rem;" class="hidden"></p>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+      </form>
+    </div>
+  </div>
 
-    <script src="/script.js" defer></script>
-  </body>
+  <!-- General Detail / Share Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn" id="modalClose">&times;</span>
+      <h3 id="modalTitle">File Detail</h3>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
 </html>

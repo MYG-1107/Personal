@@ -1,63 +1,38 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
-const { verifyAdminPassword } = require('../services/authService');
-
 const router = express.Router();
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many login attempts. Please try again later.' },
-});
-
-router.post('/login', loginLimiter, async (req, res) => {
+// POST /api/auth/login
+router.post('/login', (req, res) => {
   const { username, password } = req.body;
-  const expectedUsername = process.env.ADMIN_USERNAME || 'admin';
+  const adminUser = process.env.ADMIN_USERNAME || 'Yaswanth';
+  const adminPass = process.env.ADMIN_PASSWORD || 'Yavi';
 
-  if (!process.env.ADMIN_PASSWORD_HASH) {
-    res.status(500).json({ error: 'Server setup incomplete. Missing admin password hash.' });
-    return;
+  if (username === adminUser && password === adminPass) {
+    req.session.isLoggedIn = true;
+    req.session.username = username;
+    return res.json({ success: true, message: 'Logged in successfully', username });
   }
 
-  if (!username || !password) {
-    res.status(400).json({ error: 'Username and password are required.' });
-    return;
-  }
-
-  const usernameMatches = username === expectedUsername;
-  const passwordMatches = await verifyAdminPassword(password);
-
-  if (!usernameMatches || !passwordMatches) {
-    res.status(401).json({ error: 'Invalid username or password.' });
-    return;
-  }
-
-  req.session.userId = 'owner';
-  req.session.username = expectedUsername;
-
-  res.json({ message: 'Login successful.', username: expectedUsername });
+  return res.status(401).json({ error: 'Invalid username or password' });
 });
 
+// POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  if (!req.session) {
-    res.json({ message: 'Logged out.' });
-    return;
-  }
-
-  req.session.destroy(() => {
-    res.json({ message: 'Logged out.' });
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ success: true, message: 'Logged out successfully' });
   });
 });
 
-router.get('/me', (req, res) => {
-  if (req.session && req.session.userId) {
-    res.json({ authenticated: true, username: req.session.username });
-    return;
+// GET /api/auth/check - Verify session on page load
+router.get('/check', (req, res) => {
+  if (req.session && req.session.isLoggedIn) {
+    return res.json({ isLoggedIn: true, username: req.session.username });
   }
-
-  res.json({ authenticated: false });
+  res.json({ isLoggedIn: false });
 });
 
 module.exports = router;

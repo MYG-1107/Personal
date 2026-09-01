@@ -1,80 +1,30 @@
-const fs = require('node:fs');
-const path = require('node:path');
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-const dataDir = path.join(__dirname, 'data');
-const dbPath = path.join(dataDir, 'files.db');
+const dbPath = path.join(__dirname, '..', 'vault.db');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Failed to connect to SQLite database:', err.message);
+  } else {
+    console.log('Connected to SQLite database at:', dbPath);
+  }
+});
 
-fs.mkdirSync(dataDir, { recursive: true });
-
-const db = new sqlite3.Database(dbPath);
-
-function run(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function onRun(err) {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
-}
-
-function get(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(row);
-    });
-  });
-}
-
-function all(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(rows);
-    });
-  });
-}
-
-async function initDatabase() {
-  await run(`
+// Initialize metadata table
+db.serialize(() => {
+  db.run(`
     CREATE TABLE IF NOT EXISTS files (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT PRIMARY KEY,
       original_filename TEXT NOT NULL,
-      stored_filename TEXT NOT NULL UNIQUE,
+      stored_filename TEXT NOT NULL,
       file_path TEXT NOT NULL,
       mime_type TEXT NOT NULL,
       file_size INTEGER NOT NULL,
       category TEXT NOT NULL,
-      uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      share_token TEXT UNIQUE
+      uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      share_token TEXT UNIQUE NOT NULL
     )
   `);
+});
 
-  await run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-}
-
-module.exports = {
-  db,
-  dbPath,
-  run,
-  get,
-  all,
-  initDatabase,
-};
+module.exports = db;

@@ -1,273 +1,272 @@
-const USE_MOCK_DATA = false;
+let isLoggedIn = false;
+let currentUser = null;
+let currentCategory = "all";
+let currentSearchQuery = "";
+let selectedFiles = [];
 
-const mockFiles = [
-  {
-    id: 1,
-    original_filename: 'Resume.pdf',
-    mime_type: 'application/pdf',
-    file_size: 2400000,
-    category: 'pdfs',
-    uploaded_at: new Date().toISOString(),
-    can_view_in_browser: true,
-  },
-  {
-    id: 2,
-    original_filename: 'Photo.jpg',
-    mime_type: 'image/jpeg',
-    file_size: 1200000,
-    category: 'images',
-    uploaded_at: new Date().toISOString(),
-    can_view_in_browser: true,
-  },
-  {
-    id: 3,
-    original_filename: 'Notes.txt',
-    mime_type: 'text/plain',
-    file_size: 12288,
-    category: 'text',
-    uploaded_at: new Date().toISOString(),
-    can_view_in_browser: true,
-  },
-];
+// DOM Handles
+const fileTableBody = document.getElementById("fileTableBody");
+const emptyState = document.getElementById("emptyState");
+const searchInput = document.getElementById("searchInput");
+const categoryFilters = document.getElementById("categoryFilters");
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const browseBtn = document.getElementById("browseBtn");
+const filePreviewList = document.getElementById("filePreviewList");
+const uploadSubmitBtn = document.getElementById("uploadSubmitBtn");
+const uploadForm = document.getElementById("uploadForm");
+const uploadSection = document.getElementById("uploadSection");
 
-const state = {
-  files: [],
-  search: '',
-  category: 'all',
-};
+// Modal Handles
+const authBtn = document.getElementById("authBtn");
+const userStatus = document.getElementById("userStatus");
+const loginModal = document.getElementById("loginModal");
+const loginModalClose = document.getElementById("loginModalClose");
+const loginForm = document.getElementById("loginForm");
+const loginError = document.getElementById("loginError");
+const modal = document.getElementById("modal");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+const modalClose = document.getElementById("modalClose");
 
-const elements = {
-  fileTableBody: document.getElementById('fileTableBody'),
-  searchInput: document.getElementById('searchInput'),
-  categoryFilters: document.getElementById('categoryFilters'),
-  uploadForm: document.getElementById('uploadForm'),
-  fileInput: document.getElementById('fileInput'),
-  uploadStatus: document.getElementById('uploadStatus'),
-  uploadProgress: document.getElementById('uploadProgress'),
-};
-
-function formatSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+// Format Utilities
+function formatBytes(bytes) {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-function fileTypeLabel(file) {
-  if (file.category === 'images') return 'Image';
-  if (file.category === 'pdfs') return 'PDF';
-  if (file.category === 'documents') return 'Document';
-  if (file.category === 'text') return 'Text';
-  return 'Other';
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function filteredFiles() {
-  return state.files.filter((file) => {
-    const matchesCategory = state.category === 'all' || file.category === state.category;
-    const matchesSearch = file.original_filename
-      .toLowerCase()
-      .includes(state.search.toLowerCase().trim());
+// Fetch and Render Files from SQLite API
+async function loadFiles() {
+  try {
+    const url = `/api/files?category=${currentCategory}&search=${encodeURIComponent(currentSearchQuery)}`;
+    const res = await fetch(url);
+    const files = await res.json();
 
-    return matchesCategory && matchesSearch;
-  });
-}
-
-function showMessage(message, isError = false) {
-  elements.uploadStatus.textContent = message;
-  elements.uploadStatus.style.color = isError ? '#c1121f' : '#067d43';
-}
-
-function renderFiles() {
-  const rows = filteredFiles();
-
-  if (!rows.length) {
-    elements.fileTableBody.innerHTML = '<tr><td colspan="5">No files found.</td></tr>';
-    return;
-  }
-
-  elements.fileTableBody.innerHTML = rows
-    .map(
-      (file) => `
-      <tr>
-        <td>${file.original_filename}</td>
-        <td>${fileTypeLabel(file)}</td>
-        <td>${formatSize(file.file_size)}</td>
-        <td>${new Date(file.uploaded_at).toLocaleString()}</td>
-        <td class="actions">
-          <button data-action="view" data-id="${file.id}">View</button>
-          <button data-action="download" data-id="${file.id}">Download</button>
-          <button data-action="share" data-id="${file.id}">Share</button>
-          <button data-action="delete" data-id="${file.id}">Delete</button>
-        </td>
-      </tr>
-    `,
-    )
-    .join('');
-}
-
-async function fetchFiles() {
-  if (USE_MOCK_DATA) {
-    state.files = mockFiles;
-    renderFiles();
-    return;
-  }
-
-  const params = new URLSearchParams();
-  if (state.search.trim()) params.set('search', state.search.trim());
-  if (state.category !== 'all') params.set('category', state.category);
-
-  const response = await fetch(`/api/files?${params.toString()}`);
-
-  if (response.status === 401) {
-    showMessage('Please login first to manage files.', true);
-    state.files = mockFiles;
-    renderFiles();
-    return;
-  }
-
-  const data = await response.json();
-  if (!response.ok) {
-    showMessage(data.error || 'Unable to load files.', true);
-    return;
-  }
-
-  state.files = data.files;
-  renderFiles();
-}
-
-function uploadFilesWithProgress(files) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const formData = new FormData();
-
-    for (const file of files) {
-      formData.append('files', file);
+    fileTableBody.innerHTML = "";
+    if (!files || files.length === 0) {
+      emptyState.classList.remove("hidden");
+      return;
     }
+    emptyState.classList.add("hidden");
 
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      const progress = Math.round((event.loaded / event.total) * 100);
-      elements.uploadProgress.value = progress;
-    };
-
-    xhr.onload = () => {
-      const data = JSON.parse(xhr.responseText || '{}');
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(data);
-        return;
-      }
-      reject(new Error(data.error || 'Unable to upload file.'));
-    };
-
-    xhr.onerror = () => reject(new Error('Network error while uploading.'));
-
-    xhr.open('POST', '/api/files/upload');
-    xhr.send(formData);
-  });
+    files.forEach(file => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><strong>${file.original_filename}</strong></td>
+        <td><span class="badge">${file.category.toUpperCase()}</span></td>
+        <td>${formatBytes(file.file_size)}</td>
+        <td>${formatDate(file.uploaded_at)}</td>
+        <td>
+          <button class="btn-action" onclick="handleView('${file.id}')">View</button>
+          <button class="btn-action" onclick="handleDownload('${file.id}')">Download</button>
+          <button class="btn-action" onclick="handleShare('${file.share_token}')">Share</button>
+          ${isLoggedIn ? `<button class="btn-action btn-danger" onclick="handleDelete('${file.id}')">Delete</button>` : ''}
+        </td>
+      `;
+      fileTableBody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error("Error loading files:", err);
+  }
 }
 
-async function onUploadSubmit(event) {
-  event.preventDefault();
-
-  const selectedFiles = [...elements.fileInput.files];
-  if (!selectedFiles.length) {
-    showMessage('Please choose at least one file.', true);
-    return;
+// Check Session Status
+async function checkAuthStatus() {
+  try {
+    const res = await fetch("/api/auth/check");
+    const data = await res.json();
+    isLoggedIn = data.isLoggedIn;
+    currentUser = data.username || null;
+    updateUIAuth();
+  } catch (err) {
+    console.error("Failed to verify session:", err);
   }
+}
 
-  if (USE_MOCK_DATA) {
-    showMessage('Mock mode is enabled. Upload uses placeholders only.');
-    return;
+function updateUIAuth() {
+  if (isLoggedIn) {
+    userStatus.textContent = `Logged in as ${currentUser}`;
+    authBtn.textContent = "Logout";
+    uploadSection.style.display = "block";
+  } else {
+    userStatus.textContent = "Guest Mode (Read Only)";
+    authBtn.textContent = "Login";
+    uploadSection.style.display = "none";
   }
+  loadFiles();
+}
 
-  elements.uploadProgress.hidden = false;
-  elements.uploadProgress.value = 0;
-  showMessage('Uploading...');
+// Event Listeners for Filters & Search
+categoryFilters.addEventListener("click", (e) => {
+  if (e.target.classList.contains("filter-btn")) {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    e.target.classList.add("active");
+    currentCategory = e.target.getAttribute("data-category");
+    loadFiles();
+  }
+});
+
+searchInput.addEventListener("input", (e) => {
+  currentSearchQuery = e.target.value;
+  loadFiles();
+});
+
+// Drag and Drop & Browse Controls
+browseBtn.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", (e) => handleFileSelection(Array.from(e.target.files)));
+
+dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("highlight"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("highlight"));
+dropZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("highlight");
+  if (e.dataTransfer.files.length) handleFileSelection(Array.from(e.dataTransfer.files));
+});
+
+function handleFileSelection(files) {
+  selectedFiles = files;
+  filePreviewList.innerHTML = "";
+  if (files.length > 0) {
+    uploadSubmitBtn.disabled = false;
+    files.forEach(f => {
+      const item = document.createElement("div");
+      item.className = "file-preview-item";
+      item.innerHTML = `<span>${f.name}</span><span>${formatBytes(f.size)}</span>`;
+      filePreviewList.appendChild(item);
+    });
+  } else {
+    uploadSubmitBtn.disabled = true;
+  }
+}
+
+// Upload Submission
+uploadForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (selectedFiles.length === 0) return;
+
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append("files", f));
+
+  uploadSubmitBtn.disabled = true;
+  uploadSubmitBtn.textContent = "Uploading...";
 
   try {
-    await uploadFilesWithProgress(selectedFiles);
-    elements.uploadForm.reset();
-    showMessage('File uploaded successfully.');
-    await fetchFiles();
-  } catch (error) {
-    showMessage(error.message || 'Unable to upload file.', true);
+    const res = await fetch("/api/files/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    if (res.ok) {
+      selectedFiles = [];
+      filePreviewList.innerHTML = "";
+      fileInput.value = "";
+      loadFiles();
+    } else {
+      const errData = await res.json();
+      alert(`Upload failed: ${errData.error}`);
+    }
+  } catch (err) {
+    alert("Network error occurred during upload");
   } finally {
-    elements.uploadProgress.hidden = true;
+    uploadSubmitBtn.disabled = true;
+    uploadSubmitBtn.textContent = "Upload Files";
   }
-}
+});
 
-async function onTableAction(event) {
-  const button = event.target.closest('button[data-action]');
-  if (!button) return;
+// File Action Handlers
+window.handleView = function(id) {
+  modalTitle.textContent = "File Preview";
+  modalBody.innerHTML = `
+    <div style="text-align: center;">
+      <iframe src="/api/files/${id}/view" style="width: 100%; height: 350px; border: 1px solid #ccc; border-radius: 4px;"></iframe>
+    </div>
+  `;
+  modal.classList.remove("hidden");
+};
 
-  const action = button.dataset.action;
-  const id = button.dataset.id;
+window.handleDownload = function(id) {
+  window.location.href = `/api/files/${id}/download`;
+};
 
-  if (action === 'view') {
-    window.open(`/api/files/${id}/view`, '_blank', 'noopener,noreferrer');
-    return;
-  }
+window.handleShare = function(shareToken) {
+  const shareUrl = `${window.location.origin}/share/${shareToken}`;
+  modalTitle.textContent = "Share Link";
+  modalBody.innerHTML = `
+    <p>Direct link for external sharing:</p>
+    <input type="text" readonly value="${shareUrl}" style="width:100%; padding: 0.5rem; margin-top: 0.5rem;">
+  `;
+  modal.classList.remove("hidden");
+};
 
-  if (action === 'download') {
-    window.location.href = `/api/files/${id}/download`;
-    return;
-  }
-
-  if (action === 'share') {
-    const response = await fetch(`/api/files/${id}/share`, { method: 'POST' });
-    const data = await response.json();
-
-    if (!response.ok) {
-      showMessage(data.error || 'Unable to create share link.', true);
-      return;
+window.handleDelete = async function(id) {
+  if (confirm("Are you sure you want to delete this file?")) {
+    try {
+      const res = await fetch(`/api/files/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        loadFiles();
+      } else {
+        const data = await res.json();
+        alert(`Delete failed: ${data.error}`);
+      }
+    } catch (err) {
+      alert("Error executing delete command");
     }
-
-    await navigator.clipboard.writeText(data.share_url);
-    showMessage('Share link created and copied to clipboard.');
-    return;
   }
+};
 
-  if (action === 'delete') {
-    const confirmed = window.confirm('Delete this file?');
-    if (!confirmed) return;
+// Auth Modal Triggering
+authBtn.addEventListener("click", () => {
+  if (isLoggedIn) handleLogout();
+  else loginModal.classList.remove("hidden");
+});
 
-    const response = await fetch(`/api/files/${id}`, { method: 'DELETE' });
-    const data = await response.json();
+loginModalClose.addEventListener("click", () => loginModal.classList.add("hidden"));
+modalClose.addEventListener("click", () => modal.classList.add("hidden"));
 
-    if (!response.ok) {
-      showMessage(data.error || 'Unable to delete file.', true);
-      return;
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginError.classList.add("hidden");
+
+  const username = document.getElementById("loginUsername").value;
+  const password = document.getElementById("loginPassword").value;
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      isLoggedIn = true;
+      currentUser = data.username;
+      updateUIAuth();
+      loginModal.classList.add("hidden");
+      loginForm.reset();
+    } else {
+      loginError.textContent = data.error || "Login failed";
+      loginError.classList.remove("hidden");
     }
-
-    showMessage(data.message || 'File deleted successfully.');
-    await fetchFiles();
+  } catch (err) {
+    loginError.textContent = "Network error";
+    loginError.classList.remove("hidden");
   }
+});
+
+async function handleLogout() {
+  await fetch("/api/auth/logout", { method: "POST" });
+  isLoggedIn = false;
+  currentUser = null;
+  updateUIAuth();
 }
 
-function onSearchInput(event) {
-  state.search = event.target.value;
-  fetchFiles().catch((error) => showMessage(error.message || 'Unable to search files.', true));
-}
-
-function onCategoryClick(event) {
-  const button = event.target.closest('button[data-category]');
-  if (!button) return;
-
-  state.category = button.dataset.category;
-
-  for (const filterButton of elements.categoryFilters.querySelectorAll('button')) {
-    filterButton.classList.toggle('active', filterButton === button);
-  }
-
-  fetchFiles().catch((error) => showMessage(error.message || 'Unable to filter files.', true));
-}
-
-function initialize() {
-  elements.searchInput.addEventListener('input', onSearchInput);
-  elements.categoryFilters.addEventListener('click', onCategoryClick);
-  elements.uploadForm.addEventListener('submit', onUploadSubmit);
-  elements.fileTableBody.addEventListener('click', onTableAction);
-
-  fetchFiles().catch((error) => showMessage(error.message || 'Unable to load files.', true));
-}
-
-initialize();
+// Initial Run
+checkAuthStatus();
