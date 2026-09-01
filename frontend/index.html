@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Personal File Vault</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="container">
+      <h1>Personal File Vault</h1>
+      <p>Store and access your important files.</p>
+      <div class="header-actions">
+        <a class="button" href="/login">Login</a>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>Upload Files</h2>
+        <form id="uploadForm">
+          <input id="fileInput" type="file" name="files" multiple />
+          <button type="submit">Upload File(s)</button>
+        </form>
+        <progress id="uploadProgress" value="0" max="100" hidden></progress>
+        <p id="uploadStatus" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>Find Files</h2>
+        <div class="row">
+          <input id="searchInput" type="search" placeholder="Search files..." />
+        </div>
+
+        <div class="filters" id="categoryFilters">
+          <button data-category="all" class="active">All</button>
+          <button data-category="documents">Documents</button>
+          <button data-category="images">Images</button>
+          <button data-category="pdfs">PDFs</button>
+          <button data-category="text">Text</button>
+          <button data-category="others">Other</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Files</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>File Name</th>
+                <th>Type</th>
+                <th>Size</th>
+                <th>Uploaded</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="fileTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/script.js" defer></script>
+  </body>
+</html>
