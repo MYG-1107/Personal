@@ -1,5 +1,5 @@
 // Replace this URL with your actual deployed Render backend URL once created
-const API_BASE = "https://personal-vault-api.onrender.com";
+const API_BASE = "https://personal-1req.onrender.com/";
 
 // Application State
 let isLoggedIn = false;
