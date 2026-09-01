@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Personal File Vault</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="container login-container">
+      <section class="card">
+        <h1>Owner Login</h1>
+        <form id="loginForm">
+          <label for="username">Username</label>
+          <input id="username" type="text" required />
+
+          <label for="password">Password</label>
+          <input id="password" type="password" required />
+
+          <button type="submit">Login</button>
+        </form>
+        <p id="loginStatus" class="status"></p>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById('loginForm');
+      const statusEl = document.getElementById('loginStatus');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        statusEl.textContent = 'Logging in...';
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          statusEl.textContent = data.error || 'Login failed.';
+          return;
+        }
+
+        statusEl.textContent = 'Login successful. Redirecting...';
+        window.location.href = '/';
+      });
+    </script>
+  </body>
+</html>

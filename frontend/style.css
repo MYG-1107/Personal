@@ -1,0 +1,131 @@
+:root {
+  color-scheme: light;
+  font-family: Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f5f6f8;
+  color: #1e1e1e;
+}
+
+.container {
+  width: min(1000px, 92%);
+  margin: 1.2rem auto;
+}
+
+header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.header-actions {
+  margin-top: 0.75rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+input,
+button,
+.button {
+  border: 1px solid #ccd1d8;
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+input[type='search'],
+input[type='text'],
+input[type='password'] {
+  width: min(500px, 100%);
+}
+
+button,
+.button {
+  background: #0b5fff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button:hover,
+.button:hover {
+  background: #0048d8;
+}
+
+.filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.filters button {
+  background: #e8edf9;
+  color: #163467;
+}
+
+.filters button.active {
+  background: #0b5fff;
+  color: #fff;
+}
+
+.status {
+  min-height: 1.25rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e9edf3;
+  padding: 0.65rem 0.4rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+td.actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+td.actions button {
+  background: #245cc4;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.9rem;
+}
+
+.login-container {
+  max-width: 500px;
+}
+
+progress {
+  width: 100%;
+  margin-top: 0.75rem;
+}
