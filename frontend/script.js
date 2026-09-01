@@ -270,3 +270,21 @@ async function handleLogout() {
 
 // Initial Run
 checkAuthStatus();
+
+// Add backend URL variable at the top of script.js
+const API_BASE = 'https://personal-vault-api.onrender.com'; 
+
+// Update fetch requests to include API_BASE and credentials
+async function loadFiles() {
+  const url = `${API_BASE}/api/files?category=${currentCategory}&search=${encodeURIComponent(currentSearchQuery)}`;
+  const res = await fetch(url, { credentials: 'include' });
+  // ... rest of function
+}
+
+// Do the same for login/logout/upload requests:
+const res = await fetch(`${API_BASE}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ username, password })
+});
