@@ -47,6 +47,7 @@
           return;
         }
 
+        localStorage.setItem('pfv_token', data.token);
         statusEl.textContent = 'Login successful. Redirecting...';
         window.location.href = '/';
       });

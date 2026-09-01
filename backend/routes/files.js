@@ -4,6 +4,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const express = require('express');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const { requireAuth } = require('../middleware/auth');
 const { detectCategory, isViewableInBrowser } = require('../services/fileService');
 const { all, get, run } = require('../database');
@@ -48,6 +49,22 @@ const upload = multer({
     }
     cb(null, true);
   },
+});
+
+const fileReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many file access requests. Please slow down.' },
+});
+
+const fileWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many file modification requests. Please slow down.' },
 });
 
 function mapFileRow(req, row) {
@@ -138,7 +155,7 @@ router.get('/:id', requireAuth, async (req, res, next) => {
   }
 });
 
-router.get('/:id/download', requireAuth, async (req, res, next) => {
+router.get('/:id/download', requireAuth, fileReadLimiter, async (req, res, next) => {
   try {
     const row = await get('SELECT * FROM files WHERE id = ?', [req.params.id]);
     if (!row) {
@@ -159,7 +176,7 @@ router.get('/:id/download', requireAuth, async (req, res, next) => {
   }
 });
 
-router.get('/:id/view', requireAuth, async (req, res, next) => {
+router.get('/:id/view', requireAuth, fileReadLimiter, async (req, res, next) => {
   try {
     const row = await get('SELECT * FROM files WHERE id = ?', [req.params.id]);
     if (!row) {
@@ -186,7 +203,7 @@ router.get('/:id/view', requireAuth, async (req, res, next) => {
   }
 });
 
-router.delete('/:id', requireAuth, async (req, res, next) => {
+router.delete('/:id', requireAuth, fileWriteLimiter, async (req, res, next) => {
   try {
     const row = await get('SELECT * FROM files WHERE id = ?', [req.params.id]);
     if (!row) {

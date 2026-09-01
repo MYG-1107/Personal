@@ -78,7 +78,7 @@ npm start
 6. Open:
 
 - Dashboard: `http://localhost:3000/`
-- Login page: `http://localhost:3000/login`
+- Login page: `http://localhost:3000/login.html`
 
 ---
 
@@ -191,7 +191,12 @@ Body:
 Response example:
 
 ```json
-{ "message": "Login successful.", "username": "admin" }
+{
+  "message": "Login successful.",
+  "username": "admin",
+  "token": "......",
+  "token_type": "Bearer"
+}
 ```
 
 ---
@@ -206,7 +211,7 @@ It is the backend entry point and wiring location.
 
 ### Security-related behavior
 - Uses `helmet`
-- Uses session cookies (`httpOnly`, `sameSite=lax`)
+- Uses bearer-token auth headers for private API access
 - Returns safe error messages
 - Does **not** expose `/uploads` as a static directory
 
@@ -282,7 +287,7 @@ Backend builds SQL `WHERE` clause and returns matching rows.
 ## 7) `backend/routes/auth.js` + `backend/middleware/auth.js`
 
 ### What these files do
-- `auth.js`: login/logout/session-status endpoints
+- `auth.js`: login/logout/current-user endpoints
 - `auth.js` middleware: blocks unauthenticated users from private APIs
 
 ### Why they exist
@@ -291,11 +296,12 @@ To enforce owner-only access for private library actions.
 ### How authentication works
 1. Owner submits username/password.
 2. Backend compares username and bcrypt hash (`ADMIN_PASSWORD_HASH` from `.env`).
-3. If valid, session is created (`req.session.userId = 'owner'`).
-4. Protected routes check session with `requireAuth` middleware.
+3. If valid, backend returns a random auth token.
+4. Frontend stores the token and sends `x-auth-token: <token>` for private APIs.
+5. Protected routes check token validity with `requireAuth` middleware.
 
 ### Permission checks
-Protected actions (upload/delete/list/share) require valid session.
+Protected actions (upload/delete/list/share) require a valid auth token.
 
 ---
 
@@ -319,7 +325,7 @@ Allows selective sharing of one file without revealing full private library.
 ## Security: Implemented vs Simplified
 
 ### Implemented
-- Owner authentication (session-based)
+- Owner authentication (token-based)
 - Password hash check with bcrypt
 - Login rate limiting
 - File size limit
@@ -331,7 +337,7 @@ Allows selective sharing of one file without revealing full private library.
 ### Simplified for learning
 - Single owner account configured from `.env`
 - Permanent share links (no expiration by default)
-- Session store is in-memory (good for local learning, not production)
+- Active tokens are in-memory (good for local learning, not production)
 
 ---
 

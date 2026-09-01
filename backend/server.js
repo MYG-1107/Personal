@@ -2,7 +2,6 @@ const path = require('node:path');
 const fs = require('node:fs');
 const express = require('express');
 const helmet = require('helmet');
-const session = require('express-session');
 const dotenv = require('dotenv');
 const { initDatabase } = require('./database');
 const authRoutes = require('./routes/auth');
@@ -27,20 +26,6 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  session({
-    name: 'personal_file_vault_session',
-    secret: process.env.SESSION_SECRET || 'dev-session-secret-change-me',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      maxAge: 1000 * 60 * 60 * 8,
-    },
-  }),
-);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
@@ -48,10 +33,6 @@ app.use('/share', shareRoutes);
 
 const frontendDir = path.join(__dirname, '..', 'frontend');
 app.use(express.static(frontendDir));
-
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(frontendDir, 'login.html'));
-});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

@@ -1,6 +1,8 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { verifyAdminPassword } = require('../services/authService');
+const { createToken, revokeToken } = require('../services/tokenService');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -34,30 +36,23 @@ router.post('/login', loginLimiter, async (req, res) => {
     return;
   }
 
-  req.session.userId = 'owner';
-  req.session.username = expectedUsername;
+  const token = createToken(expectedUsername);
 
-  res.json({ message: 'Login successful.', username: expectedUsername });
-});
-
-router.post('/logout', (req, res) => {
-  if (!req.session) {
-    res.json({ message: 'Logged out.' });
-    return;
-  }
-
-  req.session.destroy(() => {
-    res.json({ message: 'Logged out.' });
+  res.json({
+    message: 'Login successful.',
+    username: expectedUsername,
+    token,
+    token_type: 'Bearer',
   });
 });
 
-router.get('/me', (req, res) => {
-  if (req.session && req.session.userId) {
-    res.json({ authenticated: true, username: req.session.username });
-    return;
-  }
+router.post('/logout', requireAuth, (req, res) => {
+  revokeToken(req.auth.token);
+  res.json({ message: 'Logged out.' });
+});
 
-  res.json({ authenticated: false });
+router.get('/me', requireAuth, (req, res) => {
+  res.json({ authenticated: true, username: req.auth.username });
 });
 
 module.exports = router;

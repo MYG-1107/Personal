@@ -1,12 +1,21 @@
 const path = require('node:path');
 const fsp = require('node:fs/promises');
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { get } = require('../database');
 const { isViewableInBrowser } = require('../services/fileService');
 
 const router = express.Router();
 
-router.get('/:token', async (req, res, next) => {
+const shareAccessLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many share-link access attempts. Please try again later.',
+});
+
+router.get('/:token', shareAccessLimiter, async (req, res, next) => {
   try {
     const token = String(req.params.token || '');
     const row = await get('SELECT * FROM files WHERE share_token = ?', [token]);

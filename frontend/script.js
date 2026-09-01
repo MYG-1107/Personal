@@ -36,6 +36,22 @@ const state = {
   category: 'all',
 };
 
+function getAuthToken() {
+  return localStorage.getItem('pfv_token') || '';
+}
+
+function authHeaders(extraHeaders = {}) {
+  const token = getAuthToken();
+  if (!token) {
+    return extraHeaders;
+  }
+
+  return {
+    ...extraHeaders,
+    'x-auth-token': token,
+  };
+}
+
 const elements = {
   fileTableBody: document.getElementById('fileTableBody'),
   searchInput: document.getElementById('searchInput'),
@@ -115,7 +131,9 @@ async function fetchFiles() {
   if (state.search.trim()) params.set('search', state.search.trim());
   if (state.category !== 'all') params.set('category', state.category);
 
-  const response = await fetch(`/api/files?${params.toString()}`);
+  const response = await fetch(`/api/files?${params.toString()}`, {
+    headers: authHeaders(),
+  });
 
   if (response.status === 401) {
     showMessage('Please login first to manage files.', true);
@@ -160,7 +178,11 @@ function uploadFilesWithProgress(files) {
 
     xhr.onerror = () => reject(new Error('Network error while uploading.'));
 
+    const token = getAuthToken();
     xhr.open('POST', '/api/files/upload');
+    if (token) {
+      xhr.setRequestHeader('x-auth-token', token);
+    }
     xhr.send(formData);
   });
 }
@@ -203,17 +225,48 @@ async function onTableAction(event) {
   const id = button.dataset.id;
 
   if (action === 'view') {
-    window.open(`/api/files/${id}/view`, '_blank', 'noopener,noreferrer');
+    const response = await fetch(`/api/files/${id}/view`, {
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      showMessage(data.error || 'Unable to view file.', true);
+      return;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    window.open(objectUrl, '_blank', 'noopener,noreferrer');
     return;
   }
 
   if (action === 'download') {
-    window.location.href = `/api/files/${id}/download`;
+    const response = await fetch(`/api/files/${id}/download`, {
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      showMessage(data.error || 'Unable to download file.', true);
+      return;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = '';
+    link.click();
+    URL.revokeObjectURL(objectUrl);
     return;
   }
 
   if (action === 'share') {
-    const response = await fetch(`/api/files/${id}/share`, { method: 'POST' });
+    const response = await fetch(`/api/files/${id}/share`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -230,7 +283,10 @@ async function onTableAction(event) {
     const confirmed = window.confirm('Delete this file?');
     if (!confirmed) return;
 
-    const response = await fetch(`/api/files/${id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/files/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
     const data = await response.json();
 
     if (!response.ok) {
